@@ -186,6 +186,90 @@ function(SDL_AddCommonCompilerFlags TARGET)
   endif()
 endfunction()
 
+function(SDL_AddStaticMinSizeRelFlags TARGET)
+  get_property(target_type TARGET "${TARGET}" PROPERTY TYPE)
+  if(NOT target_type MATCHES "^(EXECUTABLE|STATIC_LIBRARY|SHARED_LIBRARY|MODULE_LIBRARY)$")
+    return()
+  endif()
+
+  if(NOT DEFINED SDL_CMAKE_IPO_MINSIZEREL_SUPPORTED)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT ipo_minsizerel_supported OUTPUT ipo_minsizerel_output LANGUAGES C)
+    set(SDL_CMAKE_IPO_MINSIZEREL_SUPPORTED "${ipo_minsizerel_supported}" CACHE INTERNAL "Whether IPO/LTO is supported for MinSizeRel static builds")
+    set(SDL_CMAKE_IPO_MINSIZEREL_OUTPUT "${ipo_minsizerel_output}" CACHE INTERNAL "IPO/LTO support check output for MinSizeRel static builds")
+  endif()
+  if(SDL_CMAKE_IPO_MINSIZEREL_SUPPORTED)
+    set_property(TARGET "${TARGET}" PROPERTY INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
+  endif()
+
+  if(MSVC)
+    target_compile_options("${TARGET}" PRIVATE
+      "$<$<AND:$<CONFIG:MinSizeRel>,$<COMPILE_LANGUAGE:C,CXX>>:/Gy>"
+      "$<$<AND:$<CONFIG:MinSizeRel>,$<COMPILE_LANGUAGE:C,CXX>>:/Gw>"
+      "$<$<AND:$<CONFIG:MinSizeRel>,$<COMPILE_LANGUAGE:C,CXX>>:/GF>"
+    )
+    if(NOT target_type STREQUAL "STATIC_LIBRARY")
+      target_link_options("${TARGET}" PRIVATE
+        "$<$<CONFIG:MinSizeRel>:/OPT:REF>"
+        "$<$<CONFIG:MinSizeRel>:/OPT:ICF>"
+        "$<$<CONFIG:MinSizeRel>:/INCREMENTAL:NO>"
+        "$<$<CONFIG:MinSizeRel>:/DEBUG:NONE>"
+      )
+    endif()
+  elseif(USE_GCC OR USE_CLANG OR USE_INTELCC OR USE_QCC)
+    target_compile_options("${TARGET}" PRIVATE
+      "$<$<AND:$<CONFIG:MinSizeRel>,$<COMPILE_LANGUAGE:C,CXX>>:-ffunction-sections>"
+      "$<$<AND:$<CONFIG:MinSizeRel>,$<COMPILE_LANGUAGE:C,CXX>>:-fdata-sections>"
+      "$<$<AND:$<CONFIG:MinSizeRel>,$<COMPILE_LANGUAGE:C,CXX>>:-fno-unwind-tables>"
+      "$<$<AND:$<CONFIG:MinSizeRel>,$<COMPILE_LANGUAGE:C,CXX>>:-fno-asynchronous-unwind-tables>"
+    )
+    if(CMAKE_OBJC_COMPILER)
+      target_compile_options("${TARGET}" PRIVATE
+        "$<$<AND:$<CONFIG:MinSizeRel>,$<COMPILE_LANGUAGE:OBJC>>:-ffunction-sections>"
+        "$<$<AND:$<CONFIG:MinSizeRel>,$<COMPILE_LANGUAGE:OBJC>>:-fdata-sections>"
+        "$<$<AND:$<CONFIG:MinSizeRel>,$<COMPILE_LANGUAGE:OBJC>>:-fno-unwind-tables>"
+        "$<$<AND:$<CONFIG:MinSizeRel>,$<COMPILE_LANGUAGE:OBJC>>:-fno-asynchronous-unwind-tables>"
+      )
+    endif()
+    if(NOT target_type STREQUAL "STATIC_LIBRARY" AND NOT EMSCRIPTEN)
+      if(APPLE)
+        target_link_options("${TARGET}" PRIVATE "$<$<CONFIG:MinSizeRel>:-Wl,-dead_strip>")
+      else()
+        target_link_options("${TARGET}" PRIVATE
+          "$<$<CONFIG:MinSizeRel>:-Wl,--gc-sections>"
+          "$<$<CONFIG:MinSizeRel>:-Wl,--as-needed>"
+          "$<$<CONFIG:MinSizeRel>:-Wl,-O1>"
+          "$<$<CONFIG:MinSizeRel>:-s>"
+        )
+      endif()
+    endif()
+  endif()
+
+  if(CMAKE_STRIP AND NOT MSVC AND NOT EMSCRIPTEN AND NOT (target_type STREQUAL "STATIC_LIBRARY" AND SDL_CMAKE_IPO_MINSIZEREL_SUPPORTED))
+    if(target_type STREQUAL "STATIC_LIBRARY")
+      set(strip_mode "debug")
+    else()
+      set(strip_mode "all")
+    endif()
+    if(APPLE)
+      set(strip_style "apple")
+    else()
+      set(strip_style "gnu")
+    endif()
+    add_custom_command(TARGET "${TARGET}" POST_BUILD
+      COMMAND "${CMAKE_COMMAND}"
+        "-DCONFIG=$<CONFIG>"
+        "-DSTRIP_TOOL=${CMAKE_STRIP}"
+        "-DRANLIB_TOOL=${CMAKE_RANLIB}"
+        "-DTARGET_FILE=$<TARGET_FILE:${TARGET}>"
+        "-DSTRIP_MODE=${strip_mode}"
+        "-DSTRIP_STYLE=${strip_style}"
+        -P "${SDL3_SOURCE_DIR}/cmake/SDLStripMinSizeRel.cmake"
+      VERBATIM
+    )
+  endif()
+endfunction()
+
 function(check_x86_source_compiles BODY VAR)
   if(ARGN)
     message(FATAL_ERROR "Unknown arguments: ${ARGN}")

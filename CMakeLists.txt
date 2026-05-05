@@ -1278,7 +1278,6 @@ sdl_glob_sources(
   "${SDL3_SOURCE_DIR}/src/core/*.h"
   "${SDL3_SOURCE_DIR}/src/cpuinfo/*.c"
   "${SDL3_SOURCE_DIR}/src/cpuinfo/*.h"
-  "${SDL3_SOURCE_DIR}/src/dynapi/*.c"
   "${SDL3_SOURCE_DIR}/src/dynapi/*.h"
   "${SDL3_SOURCE_DIR}/src/events/*.c"
   "${SDL3_SOURCE_DIR}/src/events/*.h"
@@ -1327,6 +1326,7 @@ sdl_glob_sources(
   "${SDL3_SOURCE_DIR}/src/video/yuv2rgb/*.c"
   "${SDL3_SOURCE_DIR}/src/video/yuv2rgb/*.h"
 )
+sdl_glob_sources(SHARED "${SDL3_SOURCE_DIR}/src/dynapi/*.c")
 
 file(GLOB SDL_UCLIBC_SOURCES "${SDL3_SOURCE_DIR}/src/libm/*.c")
 if(TARGET SDL3-shared)
@@ -4109,6 +4109,7 @@ if(SDL_STATIC)
     OUTPUT_NAME "${sdl_static_libname}"
   )
   target_compile_definitions(SDL3-static PRIVATE SDL_STATIC_LIB)
+  SDL_AddStaticMinSizeRelFlags(SDL3-static)
   target_link_libraries(SDL3-static PRIVATE ${SDL_CMAKE_DEPENDS})
   target_include_directories(SDL3-static
     PRIVATE
@@ -4142,6 +4143,9 @@ sdl_compile_definitions(
 if(SDL_TEST_LIBRARY)
   file(GLOB TEST_SOURCES "${SDL3_SOURCE_DIR}/src/test/*.c" "${SDL3_SOURCE_DIR}/src/test/*.h")
   target_sources(SDL3_test PRIVATE ${TEST_SOURCES})
+  if(SDL_STATIC AND NOT SDL_TESTS_LINK_SHARED)
+    SDL_AddStaticMinSizeRelFlags(SDL3_test)
+  endif()
   if(APPLE)
     set_target_properties(SDL3_test PROPERTIES
       FRAMEWORK "${SDL_FRAMEWORK}"
