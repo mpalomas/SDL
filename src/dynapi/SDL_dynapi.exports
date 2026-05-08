@@ -1285,3 +1285,9 @@ _SDL_SetGPURenderStateStorageBuffers
 _SDL_GDKSuspendRenderer
 _SDL_GDKResumeRenderer
 _SDL_IsPhone
+_SDL_CreateDisplayLink
+_SDL_StartDisplayLink
+_SDL_StopDisplayLink
+_SDL_DestroyDisplayLink
+_SDL_GetDisplayLinkID
+_SDL_GetDisplayLinkWindow

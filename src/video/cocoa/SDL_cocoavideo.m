@@ -126,6 +126,10 @@ static SDL_VideoDevice *Cocoa_CreateDevice(void)
         device->SetWindowParent = Cocoa_SetWindowParent;
         device->SetWindowModal = Cocoa_SetWindowModal;
         device->SyncWindow = Cocoa_SyncWindow;
+        device->CreateDisplayLink = Cocoa_CreateDisplayLink;
+        device->StartDisplayLink = Cocoa_StartDisplayLink;
+        device->StopDisplayLink = Cocoa_StopDisplayLink;
+        device->DestroyDisplayLink = Cocoa_DestroyDisplayLink;
 
 #ifdef SDL_VIDEO_OPENGL_CGL
         device->GL_LoadLibrary = Cocoa_GL_LoadLibrary;

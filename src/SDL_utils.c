@@ -256,6 +256,7 @@ static bool SDLCALL LogOneLeakedObject(void *userdata, const SDL_HashTable *tabl
         SDLOBJTYPECASE(HIDAPI_JOYSTICK, "hidapi joystick");
         SDLOBJTYPECASE(THREAD, "thread");
         SDLOBJTYPECASE(TRAY, "SDL_Tray");
+        SDLOBJTYPECASE(DISPLAY_LINK, "SDL_DisplayLink");
         #undef SDLOBJTYPECASE
         default: break;
     }
@@ -622,4 +623,3 @@ void SDL_DebugLogBackend(const char *subsystem, const char *backend)
 {
     SDL_LogDebug(SDL_LOG_CATEGORY_SYSTEM, "SDL chose %s backend '%s'", subsystem, backend);
 }
-

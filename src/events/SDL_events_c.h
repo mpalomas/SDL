@@ -45,6 +45,7 @@ extern void SDL_SendAppEvent(SDL_EventType eventType);
 extern void SDL_SendKeymapChangedEvent(void);
 extern void SDL_SendLocaleChangedEvent(void);
 extern void SDL_SendSystemThemeChangedEvent(void);
+extern bool SDL_SendDisplayLinkEvent(SDL_DisplayLink *display_link, double frame_timestamp_s, double duration_s);
 
 extern void *SDL_AllocateTemporaryMemory(size_t size);
 extern const char *SDL_CreateTemporaryString(const char *string);

@@ -35,6 +35,17 @@ typedef struct SDL_VideoData SDL_VideoData;
 typedef struct SDL_DisplayData SDL_DisplayData;
 typedef struct SDL_WindowData SDL_WindowData;
 
+struct SDL_DisplayLink
+{
+    SDL_DisplayLinkID id;
+    SDL_Window *window;
+    void *internal;
+    bool running;
+
+    SDL_DisplayLink *prev;
+    SDL_DisplayLink *next;
+};
+
 typedef struct
 {
     float SDR_white_level;
@@ -145,6 +156,8 @@ struct SDL_Window
     SDL_Window *first_child;
     SDL_Window *prev_sibling;
     SDL_Window *next_sibling;
+
+    SDL_DisplayLink *display_links;
 };
 #define SDL_WINDOW_FULLSCREEN_VISIBLE(W)        \
     ((((W)->flags & SDL_WINDOW_FULLSCREEN) != 0) &&   \
@@ -316,6 +329,10 @@ struct SDL_VideoDevice
     bool (*SetWindowFillDocument)(SDL_VideoDevice *_this, SDL_Window *window, bool fill);
     bool (*SyncWindow)(SDL_VideoDevice *_this, SDL_Window *window);
     bool (*ReconfigureWindow)(SDL_VideoDevice *_this, SDL_Window *window, SDL_WindowFlags flags);
+    bool (*CreateDisplayLink)(SDL_VideoDevice *_this, SDL_DisplayLink *display_link, SDL_Window *window, const SDL_DisplayLinkOptions *options);
+    bool (*StartDisplayLink)(SDL_VideoDevice *_this, SDL_DisplayLink *display_link);
+    bool (*StopDisplayLink)(SDL_VideoDevice *_this, SDL_DisplayLink *display_link);
+    void (*DestroyDisplayLink)(SDL_VideoDevice *_this, SDL_DisplayLink *display_link);
 
     /* * * */
     /*
@@ -578,6 +595,7 @@ extern void SDL_GL_DeduceMaxSupportedESProfile(int *major, int *minor);
 
 extern bool SDL_RecreateWindow(SDL_Window *window, SDL_WindowFlags flags);
 extern bool SDL_ReconfigureWindow(SDL_Window *window, SDL_WindowFlags flags);
+extern bool SDL_SendDisplayLinkEvent(SDL_DisplayLink *display_link, double frame_timestamp_s, double duration_s);
 extern bool SDL_HasWindows(void);
 extern void SDL_RelativeToGlobalForWindow(SDL_Window *window, int rel_x, int rel_y, int *abs_x, int *abs_y);
 extern void SDL_GlobalToRelativeForWindow(SDL_Window *window, int abs_x, int abs_y, int *rel_x, int *rel_y);

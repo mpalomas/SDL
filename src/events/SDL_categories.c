@@ -57,6 +57,9 @@ SDL_EventCategory SDL_GetEventCategory(Uint32 type)
     case SDL_EVENT_RENDER_DEVICE_LOST:
         return SDL_EVENTCATEGORY_RENDER;
 
+    case SDL_EVENT_DISPLAY_LINK:
+        return SDL_EVENTCATEGORY_WINDOW;
+
     case SDL_EVENT_QUIT:
         return SDL_EVENTCATEGORY_QUIT;
 

@@ -264,6 +264,9 @@ typedef enum SDL_EventType
     SDL_EVENT_RENDER_DEVICE_RESET, /**< The device has been reset and all textures need to be recreated */
     SDL_EVENT_RENDER_DEVICE_LOST, /**< The device has been lost and can't be recovered. */
 
+    /* Display link events */
+    SDL_EVENT_DISPLAY_LINK = 0x2100, /**< A display link has produced frame timing for a window. */
+
     /* Reserved events for private platforms */
     SDL_EVENT_PRIVATE0 = 0x4000,
     SDL_EVENT_PRIVATE1,
@@ -758,6 +761,22 @@ typedef struct SDL_RenderEvent
     SDL_WindowID windowID; /**< The window containing the renderer in question. */
 } SDL_RenderEvent;
 
+/**
+ * Display link event structure (event.display_link.*)
+ *
+ * \since This struct is available since SDL 3.4.0.
+ */
+typedef struct SDL_DisplayLinkEvent
+{
+    SDL_EventType type; /**< SDL_EVENT_DISPLAY_LINK */
+    Uint32 reserved;
+    Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
+    SDL_WindowID windowID; /**< The window associated with the display link. */
+    SDL_DisplayLinkID displayLinkID; /**< The display link instance id. */
+    double frame_timestamp_s; /**< Native display link timestamp, in seconds. */
+    double duration_s; /**< Estimated duration until the next display link frame, in seconds. */
+} SDL_DisplayLinkEvent;
+
 
 /**
  * Touch finger event structure (event.tfinger.*)
@@ -1052,6 +1071,7 @@ typedef union SDL_Event
     SDL_PenButtonEvent pbutton;             /**< Pen button event data */
     SDL_PenAxisEvent paxis;                 /**< Pen axis event data */
     SDL_RenderEvent render;                 /**< Render event data */
+    SDL_DisplayLinkEvent display_link;      /**< Display link event data */
     SDL_DropEvent drop;                     /**< Drag and drop event data */
     SDL_ClipboardEvent clipboard;           /**< Clipboard event data */
 

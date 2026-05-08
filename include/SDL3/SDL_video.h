@@ -83,6 +83,15 @@ typedef Uint32 SDL_DisplayID;
  */
 typedef Uint32 SDL_WindowID;
 
+/**
+ * This is a unique ID for a display link.
+ *
+ * The value 0 is an invalid ID.
+ *
+ * \since This datatype is available since SDL 3.4.0.
+ */
+typedef Uint32 SDL_DisplayLinkID;
+
 /* Global video properties... */
 
 /**
@@ -173,6 +182,15 @@ typedef enum SDL_DisplayOrientation
  * \sa SDL_CreateWindow
  */
 typedef struct SDL_Window SDL_Window;
+
+/**
+ * The struct used as an opaque handle to a display link.
+ *
+ * \since This struct is available since SDL 3.4.0.
+ *
+ * \sa SDL_CreateDisplayLink
+ */
+typedef struct SDL_DisplayLink SDL_DisplayLink;
 
 /**
  * The flags on a window.
@@ -1182,6 +1200,106 @@ extern SDL_DECLSPEC SDL_Window ** SDLCALL SDL_GetWindows(int *count);
  * \sa SDL_DestroyWindow
  */
 extern SDL_DECLSPEC SDL_Window * SDLCALL SDL_CreateWindow(const char *title, int w, int h, SDL_WindowFlags flags);
+
+/**
+ * Display link creation options.
+ *
+ * \since This struct is available since SDL 3.4.0.
+ */
+typedef struct SDL_DisplayLinkOptions
+{
+    double preferred_frame_rate_hz; /**< 0.0 to use the display link's default rate. */
+} SDL_DisplayLinkOptions;
+
+/**
+ * Create a display link for a window.
+ *
+ * A display link is a timing source that sends SDL_EVENT_DISPLAY_LINK events
+ * synchronized to the display that owns the window.
+ *
+ * \param window the window that owns the display link.
+ * \param options optional creation options, may be NULL for defaults.
+ * \returns a display link handle, or NULL on failure; call SDL_GetError() for
+ *          more information.
+ *
+ * \threadsafety This function should only be called on the main thread.
+ *
+ * \since This function is available since SDL 3.4.0.
+ *
+ * \sa SDL_DestroyDisplayLink
+ * \sa SDL_StartDisplayLink
+ * \sa SDL_StopDisplayLink
+ */
+extern SDL_DECLSPEC SDL_DisplayLink * SDLCALL SDL_CreateDisplayLink(SDL_Window *window, const SDL_DisplayLinkOptions *options);
+
+/**
+ * Start a display link.
+ *
+ * \param display_link the display link to start.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety This function should only be called on the main thread.
+ *
+ * \since This function is available since SDL 3.4.0.
+ *
+ * \sa SDL_CreateDisplayLink
+ * \sa SDL_StopDisplayLink
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_StartDisplayLink(SDL_DisplayLink *display_link);
+
+/**
+ * Stop a display link.
+ *
+ * \param display_link the display link to stop.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety This function should only be called on the main thread.
+ *
+ * \since This function is available since SDL 3.4.0.
+ *
+ * \sa SDL_CreateDisplayLink
+ * \sa SDL_StartDisplayLink
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_StopDisplayLink(SDL_DisplayLink *display_link);
+
+/**
+ * Destroy a display link.
+ *
+ * \param display_link the display link to destroy, may be NULL.
+ *
+ * \threadsafety This function should only be called on the main thread.
+ *
+ * \since This function is available since SDL 3.4.0.
+ *
+ * \sa SDL_CreateDisplayLink
+ */
+extern SDL_DECLSPEC void SDLCALL SDL_DestroyDisplayLink(SDL_DisplayLink *display_link);
+
+/**
+ * Get a display link's unique ID.
+ *
+ * \param display_link the display link to query.
+ * \returns the display link ID, or 0 if the display link is invalid.
+ *
+ * \threadsafety This function should only be called on the main thread.
+ *
+ * \since This function is available since SDL 3.4.0.
+ */
+extern SDL_DECLSPEC SDL_DisplayLinkID SDLCALL SDL_GetDisplayLinkID(SDL_DisplayLink *display_link);
+
+/**
+ * Get the window that owns a display link.
+ *
+ * \param display_link the display link to query.
+ * \returns the owning window, or NULL if the display link is invalid.
+ *
+ * \threadsafety This function should only be called on the main thread.
+ *
+ * \since This function is available since SDL 3.4.0.
+ */
+extern SDL_DECLSPEC SDL_Window * SDLCALL SDL_GetDisplayLinkWindow(SDL_DisplayLink *display_link);
 
 /**
  * Create a child popup window of the specified parent window.

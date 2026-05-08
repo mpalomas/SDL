@@ -195,6 +195,10 @@ extern bool Cocoa_SetWindowFocusable(SDL_VideoDevice *_this, SDL_Window *window,
 extern bool Cocoa_SetWindowModal(SDL_VideoDevice *_this, SDL_Window *window, bool modal);
 extern bool Cocoa_SetWindowParent(SDL_VideoDevice *_this, SDL_Window *window, SDL_Window *parent);
 extern bool Cocoa_SyncWindow(SDL_VideoDevice *_this, SDL_Window *window);
+extern bool Cocoa_CreateDisplayLink(SDL_VideoDevice *_this, SDL_DisplayLink *display_link, SDL_Window *window, const SDL_DisplayLinkOptions *options);
+extern bool Cocoa_StartDisplayLink(SDL_VideoDevice *_this, SDL_DisplayLink *display_link);
+extern bool Cocoa_StopDisplayLink(SDL_VideoDevice *_this, SDL_DisplayLink *display_link);
+extern void Cocoa_DestroyDisplayLink(SDL_VideoDevice *_this, SDL_DisplayLink *display_link);
 
 extern void Cocoa_MenuVisibilityCallback(void *userdata, const char *name, const char *oldValue, const char *newValue);
 

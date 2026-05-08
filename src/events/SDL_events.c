@@ -518,6 +518,14 @@ int SDL_GetEventDescription(const SDL_Event *event, char *buf, int buflen)
         SDL_RENDEREVENT_CASE(SDL_EVENT_RENDER_DEVICE_RESET);
         SDL_RENDEREVENT_CASE(SDL_EVENT_RENDER_DEVICE_LOST);
 
+        SDL_EVENT_CASE(SDL_EVENT_DISPLAY_LINK)
+        (void)SDL_snprintf(details, sizeof(details), " (timestamp=%" SDL_PRIu64 " windowid=%u displaylinkid=%u frame_timestamp_s=%g duration_s=%g)",
+                           event->display_link.timestamp, (uint)event->display_link.windowID,
+                           (uint)event->display_link.displayLinkID,
+                           event->display_link.frame_timestamp_s,
+                           event->display_link.duration_s);
+        break;
+
 #define SDL_DISPLAYEVENT_CASE(x)               \
     case x:                                    \
         SDL_strlcpy(name, #x, sizeof(name));   \

@@ -22,6 +22,8 @@
 
 #ifdef SDL_VIDEO_DRIVER_COCOA
 
+#import <QuartzCore/QuartzCore.h>
+
 #include <float.h> // For FLT_MAX
 
 #include "../../events/SDL_dropevents_c.h"
@@ -59,6 +61,104 @@
 #endif
 
 @implementation SDL_CocoaWindowData
+
+@end
+
+@interface SDL3Cocoa_DisplayLinkTarget : NSObject
+- (instancetype)initWithDisplayLink:(SDL_DisplayLink *)displayLink;
+- (void)displayLinkFired:(CADisplayLink *)sender;
+- (void)resetTiming;
+@end
+
+@interface SDL3Cocoa_DisplayLink : NSObject
+- (instancetype)initWithView:(NSView *)view displayLink:(SDL_DisplayLink *)displayLink options:(const SDL_DisplayLinkOptions *)options;
+- (void)start;
+- (void)stop;
+- (void)destroy;
+@end
+
+@implementation SDL3Cocoa_DisplayLinkTarget
+{
+    SDL_DisplayLink *displayLink;
+    CFTimeInterval lastTimestamp;
+}
+
+- (instancetype)initWithDisplayLink:(SDL_DisplayLink *)value
+{
+    self = [super init];
+    if (self) {
+        displayLink = value;
+        lastTimestamp = 0.0;
+    }
+    return self;
+}
+
+- (void)resetTiming
+{
+    lastTimestamp = 0.0;
+}
+
+- (void)displayLinkFired:(CADisplayLink *)sender
+{
+    const CFTimeInterval frameTimestamp = [sender timestamp];
+    CFTimeInterval duration = 0.0;
+
+    if (lastTimestamp > 0.0) {
+        duration = frameTimestamp - lastTimestamp;
+    } else if ([sender targetTimestamp] > frameTimestamp) {
+        duration = [sender targetTimestamp] - frameTimestamp;
+    }
+    lastTimestamp = frameTimestamp;
+
+    SDL_SendDisplayLinkEvent(displayLink, (double)frameTimestamp, (double)duration);
+}
+
+@end
+
+@implementation SDL3Cocoa_DisplayLink
+{
+    SDL3Cocoa_DisplayLinkTarget *target;
+    CADisplayLink *displayLink;
+}
+
+- (instancetype)initWithView:(NSView *)view displayLink:(SDL_DisplayLink *)value options:(const SDL_DisplayLinkOptions *)options
+{
+    self = [super init];
+    if (self) {
+        target = [[SDL3Cocoa_DisplayLinkTarget alloc] initWithDisplayLink:value];
+        displayLink = [view displayLinkWithTarget:target selector:@selector(displayLinkFired:)];
+        if (!displayLink) {
+            return nil;
+        }
+        [displayLink setPaused:YES];
+        if (options->preferred_frame_rate_hz > 0.0) {
+            const float preferred_frame_rate_hz = (float)options->preferred_frame_rate_hz;
+            CAFrameRateRange range = { preferred_frame_rate_hz, preferred_frame_rate_hz, preferred_frame_rate_hz };
+            [displayLink setPreferredFrameRateRange:range];
+        }
+        [displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+    }
+    return self;
+}
+
+- (void)start
+{
+    [target resetTiming];
+    [displayLink setPaused:NO];
+}
+
+- (void)stop
+{
+    [displayLink setPaused:YES];
+    [target resetTiming];
+}
+
+- (void)destroy
+{
+    [displayLink invalidate];
+    displayLink = nil;
+    target = nil;
+}
 
 @end
 
@@ -3266,6 +3366,69 @@ void Cocoa_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
 #endif // SDL_VIDEO_OPENGL
         }
         window->internal = NULL;
+    }
+}
+
+bool Cocoa_CreateDisplayLink(SDL_VideoDevice *_this, SDL_DisplayLink *display_link, SDL_Window *window, const SDL_DisplayLinkOptions *options)
+{
+    @autoreleasepool {
+        SDL_CocoaWindowData *data;
+        SDL3Cocoa_DisplayLink *cocoa_display_link;
+
+        (void)_this;
+
+        if (@available(macOS 14.0, *)) {
+            data = (__bridge SDL_CocoaWindowData *)window->internal;
+            if (!data || !data.sdlContentView) {
+                return SDL_SetError("Window does not have a Cocoa content view");
+            }
+
+            cocoa_display_link = [[SDL3Cocoa_DisplayLink alloc] initWithView:data.sdlContentView displayLink:display_link options:options];
+            if (!cocoa_display_link) {
+                return SDL_SetError("Couldn't create Cocoa display link");
+            }
+
+            display_link->internal = (void *)CFBridgingRetain(cocoa_display_link);
+            return true;
+        } else {
+            return SDL_SetError("Display links are not supported on this macOS version");
+        }
+    }
+}
+
+bool Cocoa_StartDisplayLink(SDL_VideoDevice *_this, SDL_DisplayLink *display_link)
+{
+    @autoreleasepool {
+        SDL3Cocoa_DisplayLink *cocoa_display_link = (__bridge SDL3Cocoa_DisplayLink *)display_link->internal;
+
+        (void)_this;
+
+        [cocoa_display_link start];
+        return true;
+    }
+}
+
+bool Cocoa_StopDisplayLink(SDL_VideoDevice *_this, SDL_DisplayLink *display_link)
+{
+    @autoreleasepool {
+        SDL3Cocoa_DisplayLink *cocoa_display_link = (__bridge SDL3Cocoa_DisplayLink *)display_link->internal;
+
+        (void)_this;
+
+        [cocoa_display_link stop];
+        return true;
+    }
+}
+
+void Cocoa_DestroyDisplayLink(SDL_VideoDevice *_this, SDL_DisplayLink *display_link)
+{
+    @autoreleasepool {
+        SDL3Cocoa_DisplayLink *cocoa_display_link = (SDL3Cocoa_DisplayLink *)CFBridgingRelease(display_link->internal);
+
+        (void)_this;
+
+        [cocoa_display_link destroy];
+        display_link->internal = NULL;
     }
 }
 

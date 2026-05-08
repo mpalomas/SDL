@@ -1312,3 +1312,9 @@
 #define SDL_GDKSuspendRenderer SDL_GDKSuspendRenderer_REAL
 #define SDL_GDKResumeRenderer SDL_GDKResumeRenderer_REAL
 #define SDL_IsPhone SDL_IsPhone_REAL
+#define SDL_CreateDisplayLink SDL_CreateDisplayLink_REAL
+#define SDL_StartDisplayLink SDL_StartDisplayLink_REAL
+#define SDL_StopDisplayLink SDL_StopDisplayLink_REAL
+#define SDL_DestroyDisplayLink SDL_DestroyDisplayLink_REAL
+#define SDL_GetDisplayLinkID SDL_GetDisplayLinkID_REAL
+#define SDL_GetDisplayLinkWindow SDL_GetDisplayLinkWindow_REAL

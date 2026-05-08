@@ -168,6 +168,16 @@ static VideoBootStrap *bootstrap[] = {
         return result;                                                  \
     }
 
+#define CHECK_DISPLAY_LINK_MAGIC(display_link, result)                          \
+    CHECK_PARAM(!_this) {                                                       \
+        SDL_UninitializedVideo();                                               \
+        return result;                                                          \
+    }                                                                           \
+    CHECK_PARAM(!SDL_ObjectValid(display_link, SDL_OBJECT_TYPE_DISPLAY_LINK)) { \
+        SDL_SetError("Invalid display link");                                   \
+        return result;                                                          \
+    }
+
 #define CHECK_DISPLAY_MAGIC(display, result)                            \
     CHECK_PARAM(!display) {                                             \
         return result;                                                  \
@@ -2631,6 +2641,166 @@ SDL_Window *SDL_CreateWindow(const char *title, int w, int h, SDL_WindowFlags fl
     return window;
 }
 
+SDL_DisplayLink *SDL_CreateDisplayLink(SDL_Window *window, const SDL_DisplayLinkOptions *options)
+{
+    const SDL_DisplayLinkOptions default_options = { 0.0 };
+    SDL_DisplayLink *display_link;
+
+    CHECK_WINDOW_MAGIC(window, NULL);
+
+    if (!_this->CreateDisplayLink) {
+        SDL_Unsupported();
+        return NULL;
+    }
+
+    if (!options) {
+        options = &default_options;
+    }
+
+    display_link = (SDL_DisplayLink *)SDL_calloc(1, sizeof(*display_link));
+    if (!display_link) {
+        SDL_OutOfMemory();
+        return NULL;
+    }
+
+    display_link->id = SDL_GetNextObjectID();
+    display_link->window = window;
+
+    if (!_this->CreateDisplayLink(_this, display_link, window, options)) {
+        SDL_free(display_link);
+        return NULL;
+    }
+
+    if (window->display_links) {
+        window->display_links->prev = display_link;
+    }
+    display_link->next = window->display_links;
+    window->display_links = display_link;
+
+    SDL_SetObjectValid(display_link, SDL_OBJECT_TYPE_DISPLAY_LINK, true);
+
+    return display_link;
+}
+
+bool SDL_StartDisplayLink(SDL_DisplayLink *display_link)
+{
+    CHECK_DISPLAY_LINK_MAGIC(display_link, false);
+
+    if (display_link->running) {
+        return true;
+    }
+    if (!_this->StartDisplayLink) {
+        return SDL_Unsupported();
+    }
+    if (!_this->StartDisplayLink(_this, display_link)) {
+        return false;
+    }
+    display_link->running = true;
+    return true;
+}
+
+bool SDL_StopDisplayLink(SDL_DisplayLink *display_link)
+{
+    CHECK_DISPLAY_LINK_MAGIC(display_link, false);
+
+    if (!display_link->running) {
+        return true;
+    }
+    if (!_this->StopDisplayLink) {
+        return SDL_Unsupported();
+    }
+    if (!_this->StopDisplayLink(_this, display_link)) {
+        return false;
+    }
+    display_link->running = false;
+    return true;
+}
+
+static bool SDLCALL RemoveDisplayLinkEvents(void *userdata, SDL_Event *event)
+{
+    const SDL_DisplayLinkID displayLinkID = *(const SDL_DisplayLinkID *)userdata;
+
+    if (event->type == SDL_EVENT_DISPLAY_LINK &&
+        event->display_link.displayLinkID == displayLinkID) {
+        return false;
+    }
+    return true;
+}
+
+void SDL_DestroyDisplayLink(SDL_DisplayLink *display_link)
+{
+    SDL_DisplayLinkID displayLinkID;
+
+    if (!display_link) {
+        return;
+    }
+
+    CHECK_DISPLAY_LINK_MAGIC(display_link,);
+
+    displayLinkID = display_link->id;
+
+    if (display_link->running) {
+        (void)SDL_StopDisplayLink(display_link);
+    }
+
+    if (_this->DestroyDisplayLink) {
+        _this->DestroyDisplayLink(_this, display_link);
+    }
+
+    if (display_link->next) {
+        display_link->next->prev = display_link->prev;
+    }
+    if (display_link->prev) {
+        display_link->prev->next = display_link->next;
+    } else if (display_link->window) {
+        display_link->window->display_links = display_link->next;
+    }
+
+    SDL_SetObjectValid(display_link, SDL_OBJECT_TYPE_DISPLAY_LINK, false);
+    SDL_FilterEvents(RemoveDisplayLinkEvents, &displayLinkID);
+    SDL_free(display_link);
+}
+
+SDL_DisplayLinkID SDL_GetDisplayLinkID(SDL_DisplayLink *display_link)
+{
+    CHECK_DISPLAY_LINK_MAGIC(display_link, 0);
+
+    return display_link->id;
+}
+
+SDL_Window *SDL_GetDisplayLinkWindow(SDL_DisplayLink *display_link)
+{
+    CHECK_DISPLAY_LINK_MAGIC(display_link, NULL);
+
+    return display_link->window;
+}
+
+bool SDL_SendDisplayLinkEvent(SDL_DisplayLink *display_link, double frame_timestamp_s, double duration_s)
+{
+    SDL_Event event;
+
+    if (!SDL_ObjectValid(display_link, SDL_OBJECT_TYPE_DISPLAY_LINK)) {
+        return false;
+    }
+    if (!display_link->window || display_link->window->is_destroying) {
+        return false;
+    }
+    if (!SDL_EventEnabled(SDL_EVENT_DISPLAY_LINK)) {
+        return false;
+    }
+
+    SDL_zero(event);
+    event.type = SDL_EVENT_DISPLAY_LINK;
+    event.common.timestamp = 0;
+    event.display_link.windowID = display_link->window->id;
+    event.display_link.displayLinkID = display_link->id;
+    event.display_link.frame_timestamp_s = frame_timestamp_s;
+    event.display_link.duration_s = duration_s;
+
+    SDL_FilterEvents(RemoveDisplayLinkEvents, &display_link->id);
+    return SDL_PushEvent(&event);
+}
+
 SDL_Window *SDL_CreatePopupWindow(SDL_Window *parent, int offset_x, int offset_y, int w, int h, SDL_WindowFlags flags)
 {
     SDL_Window *window;
@@ -4498,6 +4668,10 @@ void SDL_DestroyWindow(SDL_Window *window)
     // Destroy any child windows of this window
     while (window->first_child) {
         SDL_DestroyWindow(window->first_child);
+    }
+
+    while (window->display_links) {
+        SDL_DestroyDisplayLink(window->display_links);
     }
 
     SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_DESTROYED, 0, 0);
